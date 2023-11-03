@@ -1,3 +1,4 @@
+using BlinkPoints;
 using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
@@ -31,6 +32,13 @@ public class Point : MonoBehaviour
         _stayDuration = stayDuration;
         _hideDuration = hideDuration;
         StartCoroutine(IEShow());
+    }
+
+    public void Show()
+    {
+        Color color = _image.color;
+        color.a = 1;
+        _image.color = color;
     }
 
     private IEnumerator IEShow()
@@ -94,6 +102,7 @@ public class Point : MonoBehaviour
 
     private void OnPointInvisible()
     {
+        GameEventCaller.Instance.OnPointInvisible(this);
         //print("Point Invisible");
     }
 

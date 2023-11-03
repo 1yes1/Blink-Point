@@ -3,12 +3,21 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public class SceneController : MonoBehaviour
+namespace BlinkPoints
 {
-
-    public void OpenTestScene()
+    public class SceneController : MonoBehaviour
     {
-        SceneManager.LoadScene(1);
+
+        public void OpenTestScene()
+        {
+            SceneManager.LoadScene(1);
+        }
+
+        public void Exit()
+        {
+            Application.Quit(); 
+        }
+
     }
 
 }
