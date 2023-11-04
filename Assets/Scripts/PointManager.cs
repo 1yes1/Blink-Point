@@ -6,19 +6,13 @@ namespace BlinkPoints
 {
     public class PointManager : MonoBehaviour
     {
-        [SerializeField] private DefaultSettings _defaultSettings;
         [SerializeField] private List<Point> _points;
-        [SerializeField] private float _timeBetweenBlinks = 1;
-        [SerializeField] private float _showDuration;
-        [SerializeField] private float _stayDuration;
-        [SerializeField] private float _hideDuration;
+        private float _timeBetweenBlinks = 1;
+        private float _showDuration = 0.2f;
+        private float _stayDuration = 0.2f;
+        private float _hideDuration = 0.2f;
 
         private bool _useRandomBlinkTimes = false;
-
-        private void Awake()
-        {
-            SetValues();
-        }
 
         private IEnumerator Start()
         {
@@ -26,33 +20,6 @@ namespace BlinkPoints
 
             yield return new WaitForSeconds(1f);
             StartCoroutine(BlinkPoints());
-        }
-
-        private void SetValues()
-        {
-            for (int i = 0; i < _defaultSettings.DefaultValues.Count; i++)
-            {
-                switch (_defaultSettings.DefaultValues[i].settingsPrefs)
-                {
-                    case SettingsPrefs.TimeBetweenBlinks:
-                        _timeBetweenBlinks = PlayerPrefs.GetFloat(_defaultSettings.DefaultValues[i].settingsPrefs.ToString());
-                        break;
-                    case SettingsPrefs.ShowDuration:
-                        _showDuration = PlayerPrefs.GetFloat(_defaultSettings.DefaultValues[i].settingsPrefs.ToString());
-                        break;
-                    case SettingsPrefs.StayDuration:
-                        _stayDuration = PlayerPrefs.GetFloat(_defaultSettings.DefaultValues[i].settingsPrefs.ToString());
-                        break;
-                    case SettingsPrefs.HideDuration:
-                        _hideDuration = PlayerPrefs.GetFloat(_defaultSettings.DefaultValues[i].settingsPrefs.ToString());
-                        break;
-                    case SettingsPrefs.RandomTime:
-                        _useRandomBlinkTimes = (PlayerPrefs.GetFloat(_defaultSettings.DefaultValues[i].settingsPrefs.ToString()) < 1) ? false : true;
-                        break;
-                    default:
-                        break;
-                }
-            }
         }
 
         private void HidePoints()

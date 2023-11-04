@@ -77,12 +77,7 @@ namespace BlinkPoints
             if (currentPoint != null)
             {
                 _mapPoints.Add(currentPoint);
-                //print("Added point");
             }
-            //else
-            //{
-            //    //print("NullPoint");
-            //}
         }
 
         private void OnCompleted()
