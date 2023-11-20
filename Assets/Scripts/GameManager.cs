@@ -3,12 +3,15 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 namespace BlinkPoints
 {
     public class GameManager : MonoBehaviour
     {
         private static GameManager _instance;
+
+        [SerializeField] private Image _resultBackground;
 
         private List<Point> _mapPoints = new List<Point>();
 
@@ -76,17 +79,20 @@ namespace BlinkPoints
         {
             if (currentPoint != null)
             {
-                _mapPoints.Add(currentPoint);
+                //_mapPoints.Add(currentPoint);
+                currentPoint.IncreaseClickCount();
+                currentPoint = null;
             }
         }
 
         private void OnCompleted()
         {
             print("Completed");
-            for (int i = 0; i < _mapPoints.Count; i++)
-            {
-                _mapPoints[i].Show();
-            }
+            _resultBackground.gameObject.SetActive(true);
+            //for (int i = 0; i < _mapPoints.Count; i++)
+            //{
+            //    _mapPoints[i].Show();
+            //}
         }
 
     }
