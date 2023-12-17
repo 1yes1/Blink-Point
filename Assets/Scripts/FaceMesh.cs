@@ -19,7 +19,8 @@ namespace Mediapipe.Unity.Tutorial
     public class FaceMesh : MonoBehaviour
     {
         [SerializeField] private TextAsset _configAsset;
-        [SerializeField] private RawImage _screen;
+        [SerializeField] private RawImage _leftScreen;
+        [SerializeField] private RawImage _rightScreen;
         [SerializeField] private MultiFaceLandmarkListAnnotationController _multiFaceLandmarksAnnotationController;
         [SerializeField] private int _width;
         [SerializeField] private int _height;
@@ -98,14 +99,16 @@ namespace Mediapipe.Unity.Tutorial
 
             yield return new WaitUntil(() => _webCamTexture.width > 16);
 
-            _screen.rectTransform.sizeDelta = new Vector2(_width, _height);
+            _leftScreen.rectTransform.sizeDelta = new Vector2(_width, _height);
+            _rightScreen.rectTransform.sizeDelta = new Vector2(_width, _height);
 
             _inputTexture = new Texture2D(_width, _height, TextureFormat.RGBA32, false);
             _inputPixelData = new Color32[_width * _height];
 
-            _screen.texture = _webCamTexture;
+            _leftScreen.texture = _webCamTexture;
+            _rightScreen.texture = _webCamTexture;
 
-            _resourceManager = new LocalResourceManager();
+            _resourceManager = new StreamingAssetsResourceManager();
             yield return _resourceManager.PrepareAssetAsync("face_detection_short_range.bytes");
             yield return _resourceManager.PrepareAssetAsync("face_landmark_with_attention.bytes");
 
@@ -117,7 +120,7 @@ namespace Mediapipe.Unity.Tutorial
             _graph.StartRun().AssertOk();
             stopwatch.Start();
 
-            var screenRect = _screen.GetComponent<RectTransform>().rect;
+            var screenRect = _leftScreen.GetComponent<RectTransform>().rect;
 
             while (true)
             {
@@ -311,7 +314,7 @@ namespace Mediapipe.Unity.Tutorial
                     useEyePositionY = rightEyePositionY;
                 }
 
-                //print("eyePositionX: " + leftEyePositionX);
+                print("eyePositionX: " + leftEyePositionX);
                 //print("eyePositionY: " + leftEyePositionY);
                 //print("frontVector: " + -frontVector.normalized);
                 //Debug.DrawRay(leftPupil, -frontVector.normalized * 20, UnityEngine.Color.magenta);
@@ -384,10 +387,10 @@ namespace Mediapipe.Unity.Tutorial
             public Point3f WorldPosition;
             public Point2f ImagePosition;
 
-            public FaceLandmark(NormalizedLandmark normalizedLandmark,Point3f worldPosition, Point2f ýmagePosition)
+            public FaceLandmark(NormalizedLandmark normalizedLandmark,Point3f worldPosition, Point2f imagePosition)
             {
                 WorldPosition = worldPosition;
-                ImagePosition = ýmagePosition;
+                ImagePosition = imagePosition;
                 Landmark = normalizedLandmark;
             }
         }

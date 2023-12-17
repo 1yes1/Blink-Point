@@ -18,6 +18,11 @@ namespace BlinkPoints
             Application.Quit(); 
         }
 
+        public void OpenScene(int sceneIndex = 2)
+        {
+            SceneManager.LoadScene(sceneIndex);
+        }
+
     }
 
 }

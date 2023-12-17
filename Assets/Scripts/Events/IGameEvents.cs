@@ -8,6 +8,7 @@ namespace BlinkPoints
 {
     public interface IGameEvents
     {
+        public void OnTestStarted();
         public void OnPointVisible(Point point);
         public void OnPointInvisible(Point point);
         public void OnKeyPressed();

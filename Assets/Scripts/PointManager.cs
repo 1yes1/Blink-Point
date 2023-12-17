@@ -58,6 +58,8 @@ namespace BlinkPoints
 
         private IEnumerator BlinkPoints()
         {
+            GameEventCaller.Instance.OnTestStarted();
+
             while (_tempPoints.Count > 0)
             {
                 ChooseRandomPoint();

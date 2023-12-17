@@ -41,6 +41,11 @@ namespace BlinkPoints
         {
             _gameEventReceiver.OnCompleted();
         }
+
+        public void OnTestStarted()
+        {
+            _gameEventReceiver.OnTestStarted();
+        }
     }
 
 }

@@ -9,6 +9,8 @@ namespace BlinkPoints
 {
     public class GameEventReceiver : IGameEvents
     {
+        public static event Action OnTestStartedEvent;
+
         public static event Action<Point> OnPointVisibleEvent;
 
         public static event Action<Point> OnPointInvisibleEvent;
@@ -36,6 +38,11 @@ namespace BlinkPoints
         public void OnCompleted()
         {
             OnCompletedEvent?.Invoke();
+        }
+
+        public void OnTestStarted()
+        {
+            OnTestStartedEvent?.Invoke();
         }
     }
 }
