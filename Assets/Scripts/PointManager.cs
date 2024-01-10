@@ -16,13 +16,26 @@ namespace BlinkPoints
 
         private bool _useRandomBlinkTimes = false;
 
-        private IEnumerator Start()
+        private void OnEnable()
+        {
+            GameEventReceiver.OnCountdownEndedEvent += OnCountdownEnded;
+        }
+
+        private void OnDisable()
+        {
+            GameEventReceiver.OnCountdownEndedEvent -= OnCountdownEnded;
+        }
+
+        private void Start()
         {
             _tempPoints = new List<Point>(_points);
 
             HidePoints();
             //TestStart();
-            yield return new WaitForSeconds(1f);
+        }
+
+        private void OnCountdownEnded()
+        {
             StartCoroutine(BlinkPoints());
         }
 
@@ -42,18 +55,21 @@ namespace BlinkPoints
             }
         }
 
-        private void ChooseRandomPoint()
+        private Point ChooseRandomPoint()
         {
             int rnd = Random.Range(0, _tempPoints.Count);
-            _tempPoints[rnd].Show(_showDuration, _stayDuration, _hideDuration,_maxShowCount);
-            GameEventCaller.Instance.OnPointVisible(_tempPoints[rnd]);
+            Point point = _tempPoints[rnd];
+            point.Show(_showDuration, _stayDuration, _hideDuration,_maxShowCount);
+            GameEventCaller.Instance.OnPointVisible(point);
 
             //int inc = Random.Range(0, 4);
             //if (inc > 0)
             //    _tempPoints[rnd].IncreaseClickCount();
 
-            if (_tempPoints[rnd].ShowCount >= _maxShowCount)
+            if (point.ShowCount >= _maxShowCount)
                 _tempPoints.RemoveAt(rnd);
+
+            return point;
         }
 
         private IEnumerator BlinkPoints()
@@ -62,12 +78,14 @@ namespace BlinkPoints
 
             while (_tempPoints.Count > 0)
             {
-                ChooseRandomPoint();
+                Point point = ChooseRandomPoint();
 
                 if(_useRandomBlinkTimes)
                     yield return new WaitForSeconds(Random.Range(_timeBetweenBlinks, _timeBetweenBlinks + 0.5f));
                 else
                     yield return new WaitForSeconds(_timeBetweenBlinks);
+
+                GameEventCaller.Instance.OnBeforePointInvisible(point);
 
             }
             GameEventCaller.Instance.OnCompleted();

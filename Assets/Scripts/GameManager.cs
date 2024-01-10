@@ -25,7 +25,7 @@ namespace BlinkPoints
         {
             GameEventReceiver.OnPointVisibleEvent += OnPointVisible;
             GameEventReceiver.OnPointInvisibleEvent += OnPointInvisible;
-            GameEventReceiver.OnKeyDownEvent += CheckCurrentPoint;
+            GameEventReceiver.OnKeyPressedEvent += CheckCurrentPoint;
             GameEventReceiver.OnCompletedEvent += OnCompleted;
         }
 
@@ -33,7 +33,7 @@ namespace BlinkPoints
         private void OnDisable()
         {
             GameEventReceiver.OnPointVisibleEvent -= OnPointVisible;
-            GameEventReceiver.OnKeyDownEvent -= CheckCurrentPoint;
+            GameEventReceiver.OnKeyPressedEvent -= CheckCurrentPoint;
             GameEventReceiver.OnPointInvisibleEvent -= OnPointInvisible;
             GameEventReceiver.OnCompletedEvent -= OnCompleted;
         }
@@ -85,14 +85,24 @@ namespace BlinkPoints
             }
         }
 
+        public void IncreaseClickCount()
+        {
+            if (currentPoint != null)
+            {
+                _mapPoints.Add(currentPoint);
+                currentPoint.IncreaseClickCount();
+                currentPoint = null;
+            }
+        }
+
         private void OnCompleted()
         {
             print("Completed");
             _resultBackground.gameObject.SetActive(true);
-            //for (int i = 0; i < _mapPoints.Count; i++)
-            //{
-            //    _mapPoints[i].Show();
-            //}
+            for (int i = 0; i < _mapPoints.Count; i++)
+            {
+                _mapPoints[i].Show();
+            }
         }
 
     }

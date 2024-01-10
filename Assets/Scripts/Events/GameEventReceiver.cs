@@ -11,38 +11,30 @@ namespace BlinkPoints
     {
         public static event Action OnTestStartedEvent;
 
+        public static event Action OnCountdownEndedEvent;
+
         public static event Action<Point> OnPointVisibleEvent;
 
         public static event Action<Point> OnPointInvisibleEvent;
 
-        public static event Action OnKeyDownEvent;
+        public static event Action OnKeyPressedEvent;
 
         public static event Action OnCompletedEvent;
 
+        public static event Action<Point> OnBeforePointInvisibleEvent;
 
-        public void OnKeyPressed()
-        {
-            OnKeyDownEvent?.Invoke();
-        }
+        public void OnKeyPressed() => OnKeyPressedEvent?.Invoke();
 
-        public void OnPointInvisible(Point point)
-        {
-            OnPointInvisibleEvent?.Invoke(point);
-        }
+        public void OnPointInvisible(Point point) => OnPointInvisibleEvent?.Invoke(point);
 
-        public void OnPointVisible(Point point)
-        {
-            OnPointVisibleEvent?.Invoke(point);
-        }
+        public void OnPointVisible(Point point) => OnPointVisibleEvent?.Invoke(point);
 
-        public void OnCompleted()
-        {
-            OnCompletedEvent?.Invoke();
-        }
+        public void OnCompleted() => OnCompletedEvent?.Invoke();
 
-        public void OnTestStarted()
-        {
-            OnTestStartedEvent?.Invoke();
-        }
+        public void OnTestStarted() => OnTestStartedEvent?.Invoke();
+
+        public void OnBeforePointInvisible(Point point) => OnBeforePointInvisibleEvent?.Invoke(point);
+
+        public void OnCountdownEnded() => OnCountdownEndedEvent?.Invoke();
     }
 }

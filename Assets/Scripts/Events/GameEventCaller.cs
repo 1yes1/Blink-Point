@@ -9,43 +9,23 @@ namespace BlinkPoints
     {
         private GameEventReceiver _gameEventReceiver;
 
-        public static GameEventCaller Instance
-        {
-            get
-            {
-                return GameManager.Instance.GameEventCaller;
-            }
-        }
+        public static GameEventCaller Instance => GameManager.Instance.GameEventCaller;
 
-        public GameEventCaller(GameEventReceiver gameEventReceiver)
-        {
-            _gameEventReceiver = gameEventReceiver;
-        }
+        public GameEventCaller(GameEventReceiver gameEventReceiver) => _gameEventReceiver = gameEventReceiver;
 
-        public void OnPointVisible(Point point)
-        {
-            _gameEventReceiver.OnPointVisible(point);
-        }
+        public void OnPointVisible(Point point) => _gameEventReceiver.OnPointVisible(point);
 
-        public void OnKeyPressed()
-        {
-            _gameEventReceiver.OnKeyPressed();
-        }
+        public void OnKeyPressed() => _gameEventReceiver.OnKeyPressed();
 
-        public void OnPointInvisible(Point point)
-        {
-            _gameEventReceiver.OnPointInvisible(point);
-        }
+        public void OnPointInvisible(Point point) => _gameEventReceiver.OnPointInvisible(point);
 
-        public void OnCompleted()
-        {
-            _gameEventReceiver.OnCompleted();
-        }
+        public void OnCompleted() => _gameEventReceiver.OnCompleted();
 
-        public void OnTestStarted()
-        {
-            _gameEventReceiver.OnTestStarted();
-        }
+        public void OnTestStarted() => _gameEventReceiver.OnTestStarted();
+
+        public void OnBeforePointInvisible(Point point) => _gameEventReceiver.OnBeforePointInvisible(point);
+
+        public void OnCountdownEnded() => _gameEventReceiver.OnCountdownEnded();
     }
 
 }

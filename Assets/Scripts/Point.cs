@@ -9,6 +9,7 @@ using Color = UnityEngine.Color;
 public class Point : MonoBehaviour
 {
     private Image _image;
+    private SpriteRenderer _spriteRenderer;
 
     private float _showDuration;
     private float _stayDuration;
@@ -21,14 +22,18 @@ public class Point : MonoBehaviour
 
     private void Awake()
     {
-        _image = GetComponent<Image>();
+        if(TryGetComponent<Image>(out Image image))
+            _image = image;
+
+        _spriteRenderer = GetComponent<SpriteRenderer>();
         _showCount = 0;
     }
     public void HideAtStart()
     {
-        Color color = _image.color;
+        Color color = _spriteRenderer.color;
         color.a = 0;
-        _image.color = color;
+        _spriteRenderer.color = color;
+        gameObject.SetActive(false);
     }
 
     public void Show(float showDuration,float stayDuration,float hideDuration,int maxShowCount)
@@ -37,6 +42,8 @@ public class Point : MonoBehaviour
         _stayDuration = stayDuration;
         _hideDuration = hideDuration;
         _maxShowCount = maxShowCount;
+        gameObject.SetActive(true);
+
         StartCoroutine(IEShow());
      
         _showCount++;
@@ -44,16 +51,18 @@ public class Point : MonoBehaviour
 
     public void Show()
     {
+        gameObject.SetActive(true);
+
         int missCount = _maxShowCount - _clickCount;
         float increase = 1f / _maxShowCount;
         float val = 1 - (missCount * increase);
 
-        Color color = _image.color;
+        Color color = _spriteRenderer.color;
         color.r = val;
         color.g = val;
         color.b = val;
         color.a = 1;
-        _image.color = color;
+        _spriteRenderer.color = color;
     }
 
     public void IncreaseClickCount()
@@ -64,23 +73,24 @@ public class Point : MonoBehaviour
 
     private IEnumerator IEShow()
     {
+
         float alpha = 0;
         float time = 0;
-        Color color = _image.color;
+        Color color = _spriteRenderer.color;
 
         while (time <= _showDuration)
         {
             alpha = time / _showDuration;
             color.a = alpha;
-            _image.color = color;
+            _spriteRenderer.color = color;
 
             time += Time.deltaTime;
             yield return null;
         }
 
-        color = _image.color;
+        color = _spriteRenderer.color;
         color.a = 1;
-        _image.color = color;
+        _spriteRenderer.color = color;
         OnPointVisible();
     }
 
@@ -100,13 +110,13 @@ public class Point : MonoBehaviour
 
         float alpha = 1;
         float time = 0;
-        Color color = _image.color;
+        Color color = _spriteRenderer.color;
 
         while (time <= _hideDuration)
         {
             alpha = 1 - (time / _hideDuration);
             color.a = alpha;
-            _image.color = color;
+            _spriteRenderer.color = color;
 
             time += Time.deltaTime;
             //print("Time: " + time + " Alpha: " + alpha);
@@ -114,15 +124,17 @@ public class Point : MonoBehaviour
             yield return null;
         }
 
-        color = _image.color;
+        color = _spriteRenderer.color;
         color.a = 0;
-        _image.color = color;
+        _spriteRenderer.color = color;
         OnPointInvisible();
     }
 
 
     private void OnPointInvisible()
     {
+        gameObject.SetActive(false);
+
         GameEventCaller.Instance.OnPointInvisible(this);
         //print("Point Invisible");
     }

@@ -40,15 +40,15 @@ public class EyePoint
 public enum EyeCorner
 {
     LeftEyePupil = 473,
-    LeftEyeLeftCorner = 362,
-    LeftEyeRightCorner = 263,
-    LeftEyeBottomCorner = 374,
-    LeftEyeTopCorner = 386,
+    LeftEyeLeftCorner = 463,
+    LeftEyeRightCorner = 446,
+    LeftEyeBottomCorner = 253,
+    LeftEyeTopCorner = 258,
     RighEyePupil = 468,
-    RightEyeLeftCorner =33,
-    RightEyeRightCorner = 133,
-    RightEyeBottomCorner = 145,
-    RightEyeTopCorner = 158
+    RightEyeLeftCorner =130,
+    RightEyeRightCorner = 243,
+    RightEyeBottomCorner = 23,
+    RightEyeTopCorner = 27
 }
 
 //public struct EyePoint

@@ -13,14 +13,15 @@ using System.Linq;
 using UnityEngine.XR;
 using System;
 using static Mediapipe.RenderAnnotation.Types;
+using System.Diagnostics;
+using Application = UnityEngine.Application;
 
 namespace Mediapipe.Unity.Tutorial
 {
     public class FaceMesh : MonoBehaviour
     {
         [SerializeField] private TextAsset _configAsset;
-        [SerializeField] private RawImage _leftScreen;
-        [SerializeField] private RawImage _rightScreen;
+        [SerializeField] private RawImage _screen;
         [SerializeField] private MultiFaceLandmarkListAnnotationController _multiFaceLandmarksAnnotationController;
         [SerializeField] private int _width;
         [SerializeField] private int _height;
@@ -30,19 +31,20 @@ namespace Mediapipe.Unity.Tutorial
         [SerializeField] private List<int> _leftEyeLandmarksIndexes;
         [SerializeField] private List<int> _rightEyeLandmarksIndexes;
         [SerializeField] private List<int> _faceLandmarksIndexes;
+        [SerializeField] private int _createFaceCircleCount;
 
         [SerializeField] private int _pupilLandmarkIndex;
         [SerializeField] private Vector2 _pupilDecreaseGap;
         [SerializeField] private Vector2 _pupilEffectMultiplier;
 
-        private GameObject _pupil;
-        private FaceLandmark _pupilLandmark;
-        private Vector3 _leftEyeballPoint;
-        private List<GameObject> _circleGameobjects = new List<GameObject>();
+        //[Header("Eye Gaze Calibration")]
+        //[SerializeField] private List<Vector2> _eyeGazeCalibrations;
+
         private List<GameObject> _faceCircles = new List<GameObject>();
         private List<GameObject> _leftEyeCircles = new List<GameObject>();
         private List<GameObject> _rightEyeCircles = new List<GameObject>();
 
+        private Canvas _canvas;
         private CalculatorGraph _graph;
         private ResourceManager _resourceManager;
 
@@ -56,10 +58,22 @@ namespace Mediapipe.Unity.Tutorial
         private List<EyePoint> _leftEyePoints;
         private List<EyePoint> _rightEyePoints;
 
+        private Stopwatch stopwatch;
+        private OutputStream<NormalizedLandmarkListVectorPacket, List<NormalizedLandmarkList>> multiFaceLandmarksStream;
+        private UnityEngine.Rect screenRect;
+
+        private bool _canDetectFace = false;
+        private Vector2 _eyeGaze;
+
+        private void Awake()
+        {
+            _canvas = FindObjectOfType<Canvas>();
+        }
+
         private IEnumerator Start()
         {
+            Application.targetFrameRate = 60;
             _calculatedFaceLandmarks = new List<FaceLandmark>();
-            _circleGameobjects = new List<GameObject>();
             _leftEyePoints = new List<EyePoint>();
             _rightEyePoints = new List<EyePoint>();
             //for (int i = 0; i < _circleCount; i++)
@@ -70,12 +84,13 @@ namespace Mediapipe.Unity.Tutorial
 
             for (int i = 0; i < _faceLandmarksIndexes.Count; i++)
             {
-                GameObject circle = Instantiate(_circlePrefab, _circlePrefab.transform.parent);
+                GameObject circle = Instantiate(_circlePrefab, _canvas.transform);
+                circle.name = "Face Landmark Circle (" + i + ")";
                 _faceCircles.Add(circle);
             }
             for (int i = 0; i < _leftEyeLandmarksIndexes.Count; i++)
             {
-                GameObject circle = Instantiate(_circlePrefab, _circlePrefab.transform.parent);
+                GameObject circle = Instantiate(_circlePrefab, _canvas.transform);
                 circle.name = "Left Eye Circle (" + i + ")";
                 _leftEyeCircles.Add(circle);
                 _leftEyePoints.Add(new EyePoint(_leftEyeLandmarksIndexes[i]));
@@ -83,7 +98,7 @@ namespace Mediapipe.Unity.Tutorial
 
             for (int i = 0; i < _rightEyeLandmarksIndexes.Count; i++)
             {
-                GameObject circle = Instantiate(_circlePrefab, _circlePrefab.transform.parent);
+                GameObject circle = Instantiate(_circlePrefab, _canvas.transform);
                 circle.name = "Right Circle (" + i + ")";
                 _rightEyeCircles.Add(circle);
                 _rightEyePoints.Add(new EyePoint(_rightEyeLandmarksIndexes[i]));
@@ -93,43 +108,110 @@ namespace Mediapipe.Unity.Tutorial
             {
                 throw new System.Exception("Web Camera devices are not found");
             }
+
             var webCamDevice = WebCamTexture.devices[0];
+
             _webCamTexture = new WebCamTexture(webCamDevice.name, _width, _height, _fps);
             _webCamTexture.Play();
 
             yield return new WaitUntil(() => _webCamTexture.width > 16);
 
-            _leftScreen.rectTransform.sizeDelta = new Vector2(_width, _height);
-            _rightScreen.rectTransform.sizeDelta = new Vector2(_width, _height);
+            _screen.rectTransform.sizeDelta = new Vector2(_width, _height);
+            _screen.rectTransform.sizeDelta = new Vector2(_width, _height);
 
             _inputTexture = new Texture2D(_width, _height, TextureFormat.RGBA32, false);
             _inputPixelData = new Color32[_width * _height];
 
-            _leftScreen.texture = _webCamTexture;
-            _rightScreen.texture = _webCamTexture;
+            _screen.texture = _webCamTexture;
+            _screen.texture = _webCamTexture;
 
             _resourceManager = new StreamingAssetsResourceManager();
             yield return _resourceManager.PrepareAssetAsync("face_detection_short_range.bytes");
             yield return _resourceManager.PrepareAssetAsync("face_landmark_with_attention.bytes");
 
-            var stopwatch = new Stopwatch();
+            stopwatch = new Stopwatch();
 
             _graph = new CalculatorGraph(_configAsset.text);
-            var multiFaceLandmarksStream = new OutputStream<NormalizedLandmarkListVectorPacket, List<NormalizedLandmarkList>>(_graph, "multi_face_landmarks");
+            multiFaceLandmarksStream = new OutputStream<NormalizedLandmarkListVectorPacket, List<NormalizedLandmarkList>>(_graph, "multi_face_landmarks");
             multiFaceLandmarksStream.StartPolling().AssertOk();
             _graph.StartRun().AssertOk();
             stopwatch.Start();
 
-            var screenRect = _leftScreen.GetComponent<RectTransform>().rect;
+            screenRect = _screen.GetComponent<RectTransform>().rect;
+            _canDetectFace = true;
 
-            while (true)
+            
+        }
+
+        private void LateUpdate()
+        {
+            DetectFaceMesh();
+
+            if (_leftEyeCircles.Count > 0)
+            {
+                //Vector3 nose = _faceCircles[0].GetComponent<RectTransform>().TransformPoint(_faceCircles[0].GetComponent<RectTransform>().anchoredPosition);
+
+                Vector3 leftPupil = GetEyeCornerWorldPosition(EyeCorner.LeftEyePupil);
+                Vector3 leftEyeLeftCorner = GetEyeCornerWorldPosition(EyeCorner.LeftEyeLeftCorner);
+                Vector3 leftEyeRightCorner = GetEyeCornerWorldPosition(EyeCorner.LeftEyeRightCorner);
+                Vector3 leftEyeTopCorner = GetEyeCornerWorldPosition(EyeCorner.LeftEyeTopCorner);
+                Vector3 leftEyeBottomCorner = GetEyeCornerWorldPosition(EyeCorner.LeftEyeBottomCorner);
+
+                Vector3 rightPupil = GetEyeCornerWorldPosition(EyeCorner.RighEyePupil);
+                Vector3 rightEyeLeftCorner = GetEyeCornerWorldPosition(EyeCorner.RightEyeLeftCorner);
+                Vector3 rightEyeRightCorner = GetEyeCornerWorldPosition(EyeCorner.RightEyeRightCorner);
+                Vector3 rightEyeTopCorner = GetEyeCornerWorldPosition(EyeCorner.RightEyeTopCorner);
+                Vector3 rightEyeBottomCorner = GetEyeCornerWorldPosition(EyeCorner.RightEyeBottomCorner);
+
+                //print("eyeLeftCorner: " + leftEyeLeftCorner);
+                //print("eyeRightCorner: " + leftEyeRightCorner);
+                //print("eyeBottomCorner: " + leftEyeBottomCorner);
+                //print("eyeTopCorner: " + leftEyeTopCorner);
+                //print("pupil: " + leftPupil);
+                float leftEyePositionX = (Mathf.InverseLerp(leftEyeLeftCorner.x + _pupilDecreaseGap.x, leftEyeRightCorner.x - _pupilDecreaseGap.x, leftPupil.x) - 0.5f) * _pupilEffectMultiplier.x;
+                float leftEyePositionY = (Mathf.InverseLerp(leftEyeBottomCorner.y + _pupilDecreaseGap.y, leftEyeTopCorner.y - _pupilDecreaseGap.y, leftPupil.y) - 0.45f) * _pupilEffectMultiplier.y;
+                //print(leftEyePositionY);
+
+                float rightEyePositionX = (Mathf.InverseLerp(rightEyeLeftCorner.x + _pupilDecreaseGap.x, rightEyeRightCorner.x - _pupilDecreaseGap.x, rightPupil.x) - 0.5f) * _pupilEffectMultiplier.x;
+                float rightEyePositionY = (Mathf.InverseLerp(rightEyeBottomCorner.y + _pupilDecreaseGap.y, rightEyeTopCorner.y - _pupilDecreaseGap.y, rightPupil.y) - 0.45f) * _pupilEffectMultiplier.y;
+
+                float useEyePositionX = leftEyePositionX;
+                float useEyePositionY = leftEyePositionY;
+
+                //print("Right: " + Mathf.Abs(rightEyeLeftCorner.x - rightEyeRightCorner.x));
+                //print("Left: " + Mathf.Abs(leftEyeLeftCorner.x - leftEyeRightCorner.x));
+
+                //if (Mathf.Abs(rightEyeLeftCorner.x - rightEyeRightCorner.x) - Mathf.Abs(leftEyeLeftCorner.x - leftEyeRightCorner.x) > 4)
+                //{
+                //    useEyePositionX = rightEyePositionX;
+                //    useEyePositionY = rightEyePositionY;
+                //}
+
+                //print("eyePositionX: " + leftEyePositionX);
+                //print("eyePositionY: " + leftEyePositionY);
+                //print("frontVector: " + -frontVector.normalized);
+                _eyeGaze = (-frontVector + (Vector3.up * useEyePositionY) + (Vector3.right * useEyePositionX)).normalized;
+                //print("Normal: " + _eyeGaze);
+                EyeCircle.Instance.SetNormal(_eyeGaze);
+                //EyeTargetController.Instance.transform.position = leftPupil;
+                UnityEngine.Debug.DrawRay(leftPupil, (-frontVector + (Vector3.up * useEyePositionY) + (Vector3.right * useEyePositionX)).normalized * 25, UnityEngine.Color.green);
+                //UnityEngine.Debug.DrawRay(leftPupil, ((Vector3.up * useEyePositionY) + (Vector3.right * useEyePositionX)).normalized * 25, UnityEngine.Color.green);
+
+            }
+
+        }
+
+
+        private void DetectFaceMesh()
+        {
+            if (_canDetectFace)
             {
                 _inputTexture.SetPixels32(_webCamTexture.GetPixels32(_inputPixelData));
                 var imageFrame = new ImageFrame(ImageFormat.Types.Format.Srgba, _width, _height, _width * 4, _inputTexture.GetRawTextureData<byte>());
                 var currentTimestamp = stopwatch.ElapsedTicks / (System.TimeSpan.TicksPerMillisecond / 1000);
                 _graph.AddPacketToInputStream("input_video", new ImageFramePacket(imageFrame, new Timestamp(currentTimestamp))).AssertOk();
 
-                yield return new WaitForEndOfFrame();
+                //yield return new WaitForEndOfFrame();
 
                 if (multiFaceLandmarksStream.TryGetNext(out var multiFaceLandmarks))
                 {
@@ -140,20 +222,21 @@ namespace Mediapipe.Unity.Tutorial
                         int faceLandmarkIndex = 0;
                         int leftEyeLandmarkIndex = 0;
                         int rightEyeLandmarkIndex = 0;
+
                         for (int i = 0; i < multiFaceLandmarks[0].Landmark.Count; i++)
                         {
-                            if (_faceLandmarksIndexes.Contains(i))
+                            //if (_faceLandmarksIndexes.Contains(i))
+                            if (_faceCircles.Count > i)
                             {
                                 Vector3 vector3;
                                 //Image Point
                                 Vector3 point = screenRect.GetPoint(multiFaceLandmarks[0].Landmark[i]);
-                                _leftEyeballPoint = point;
 
-                                SetCircleProperty(_leftEyeCircles[leftEyeLandmarkIndex], point, out vector3);
+                                SetCircleProperty(_faceCircles[faceLandmarkIndex], point, out vector3, i.ToString());
+                                FaceLandmark landmark = new FaceLandmark(multiFaceLandmarks[0].Landmark[i], new Point3f(vector3.x, vector3.y, vector3.z), new Point2f(point.x, point.y));
 
-
-                                FaceLandmark landmark = new FaceLandmark(multiFaceLandmarks[0].Landmark[i],new Point3f(vector3.x, vector3.y, vector3.z), new Point2f(point.x, point.y));
                                 _calculatedFaceLandmarks.Add(landmark);
+
                                 faceLandmarkIndex++;
                             }
 
@@ -167,9 +250,8 @@ namespace Mediapipe.Unity.Tutorial
                                 Vector3 vector3;
                                 //Image Point
                                 Vector3 point = screenRect.GetPoint(multiFaceLandmarks[0].Landmark[i]);
-                                _leftEyeballPoint = point;
 
-                                SetCircleProperty(_leftEyeCircles[leftEyeLandmarkIndex],point, out vector3);
+                                SetCircleProperty(_leftEyeCircles[leftEyeLandmarkIndex], point, out vector3,i.ToString());
 
                                 EyePoint eyePoint = _leftEyePoints.Find((x) => x.Index == i);
                                 eyePoint.ImagePosition = point;
@@ -191,7 +273,7 @@ namespace Mediapipe.Unity.Tutorial
                                 //Image Point
                                 Vector3 point = screenRect.GetPoint(multiFaceLandmarks[0].Landmark[i]);
 
-                                SetCircleProperty(_rightEyeCircles[rightEyeLandmarkIndex], point, out vector3);
+                                SetCircleProperty(_rightEyeCircles[rightEyeLandmarkIndex], point, out vector3, i.ToString());
 
                                 EyePoint eyePoint = _rightEyePoints.Find((x) => x.Index == i);
                                 eyePoint.ImagePosition = point;
@@ -204,6 +286,7 @@ namespace Mediapipe.Unity.Tutorial
 
                         }
 
+                        #region Head Direction
                         float normalizedFocaleY = 1.28f; // Logitech 922
                         float focalLength = _height * normalizedFocaleY;
                         float cx = _width / 2;
@@ -261,8 +344,12 @@ namespace Mediapipe.Unity.Tutorial
                             (float)rotatedFrontVectorMat.At<Point3f>(0, 0).Z
                         );
 
-                        // Now, rotatedFrontVector contains the rotated front vector
+                        //Now, rotatedFrontVector contains the rotated front vector
                         frontVector = rotatedFrontVector;
+                        #endregion
+
+
+                        //frontVector = Vector3.forward;
                     }
                 }
                 else
@@ -271,63 +358,6 @@ namespace Mediapipe.Unity.Tutorial
                 }
             }
         }
-
-        private void Update()
-        {
-
-            if(_leftEyeCircles.Count > 0)
-            {
-                //Vector3 nose = _faceCircles[0].GetComponent<RectTransform>().TransformPoint(_faceCircles[0].GetComponent<RectTransform>().anchoredPosition);
-
-                Vector3 leftPupil = GetEyeCornerWorldPosition(EyeCorner.LeftEyePupil);
-                Vector3 leftEyeLeftCorner = GetEyeCornerWorldPosition(EyeCorner.LeftEyeLeftCorner);
-                Vector3 leftEyeRightCorner = GetEyeCornerWorldPosition(EyeCorner.LeftEyeRightCorner);
-                Vector3 leftEyeTopCorner = GetEyeCornerWorldPosition(EyeCorner.LeftEyeTopCorner);
-                Vector3 leftEyeBottomCorner = GetEyeCornerWorldPosition(EyeCorner.LeftEyeBottomCorner);
-
-                Vector3 rightPupil = GetEyeCornerWorldPosition(EyeCorner.RighEyePupil);
-                Vector3 rightEyeLeftCorner = GetEyeCornerWorldPosition(EyeCorner.RightEyeLeftCorner);
-                Vector3 rightEyeRightCorner = GetEyeCornerWorldPosition(EyeCorner.RightEyeRightCorner);
-                Vector3 rightEyeTopCorner = GetEyeCornerWorldPosition(EyeCorner.RightEyeTopCorner);
-                Vector3 rightEyeBottomCorner = GetEyeCornerWorldPosition(EyeCorner.RightEyeBottomCorner);
-
-                //print("eyeLeftCorner: " + leftEyeLeftCorner);
-                //print("eyeRightCorner: " + leftEyeRightCorner);
-                //print("eyeBottomCorner: " + leftEyeBottomCorner);
-                //print("eyeTopCorner: " + leftEyeTopCorner);
-                //print("pupil: " + leftPupil);
-                float leftEyePositionX = (Mathf.InverseLerp(leftEyeLeftCorner.x + _pupilDecreaseGap.x, leftEyeRightCorner.x - _pupilDecreaseGap.x, leftPupil.x) - 0.5f) * _pupilEffectMultiplier.x;
-                float leftEyePositionY = (Mathf.InverseLerp(leftEyeBottomCorner.y + _pupilDecreaseGap.y, leftEyeTopCorner.y - _pupilDecreaseGap.y, leftPupil.y) - 0.45f) * _pupilEffectMultiplier.y;
-
-                float rightEyePositionX = (Mathf.InverseLerp(rightEyeLeftCorner.x + _pupilDecreaseGap.x, rightEyeRightCorner.x - _pupilDecreaseGap.x, rightPupil.x) - 0.5f) * _pupilEffectMultiplier.x;
-                float rightEyePositionY = (Mathf.InverseLerp(rightEyeBottomCorner.y + _pupilDecreaseGap.y, rightEyeTopCorner.y - _pupilDecreaseGap.y, rightPupil.y) - 0.45f) * _pupilEffectMultiplier.y;
-
-                float useEyePositionX = leftEyePositionX;
-                float useEyePositionY = leftEyePositionY;
-
-                //print("Right: " + Mathf.Abs(rightEyeLeftCorner.x - rightEyeRightCorner.x));
-                //print("Left: " + Mathf.Abs(leftEyeLeftCorner.x - leftEyeRightCorner.x));
-
-                if (Mathf.Abs(rightEyeLeftCorner.x - rightEyeRightCorner.x) - Mathf.Abs(leftEyeLeftCorner.x - leftEyeRightCorner.x) > 4)
-                {
-                    useEyePositionX = rightEyePositionX;
-                    useEyePositionY = rightEyePositionY;
-                }
-
-                print("eyePositionX: " + leftEyePositionX);
-                //print("eyePositionY: " + leftEyePositionY);
-                //print("frontVector: " + -frontVector.normalized);
-                //Debug.DrawRay(leftPupil, -frontVector.normalized * 20, UnityEngine.Color.magenta);
-                //Debug.DrawRay(leftPupil, (-frontVector + (Vector3.right * leftEyePositionX)).normalized * 25, UnityEngine.Color.magenta);
-                //Debug.DrawRay(leftPupil, (-frontVector + (Vector3.up * leftEyePositionY)).normalized * 25, UnityEngine.Color.magenta);
-                //Debug.DrawRay(leftPupil, (-frontVector + (Vector3.up * leftEyePositionY) + (Vector3.right * leftEyePositionX)).normalized * 25, UnityEngine.Color.green);
-                //Debug.DrawRay(rightPupil, (-frontVector + (Vector3.up * rightEyePositionY) + (Vector3.right * rightEyePositionX)).normalized * 25, UnityEngine.Color.green);
-                Debug.DrawRay(leftPupil, (-frontVector + (Vector3.up * useEyePositionY) + (Vector3.right * useEyePositionX)).normalized * 25, UnityEngine.Color.green);
-                //Debug.DrawRay(rightPupil, (-frontVector + (Vector3.up * useEyePositionY) + (Vector3.right * useEyePositionX)).normalized * 25, UnityEngine.Color.green);
-
-            }
-        }
-
 
         private void OnDestroy()
         {
@@ -369,14 +399,20 @@ namespace Mediapipe.Unity.Tutorial
         }
 
 
-        private void SetCircleProperty(GameObject circle,Vector3 point,out Vector3 worldPosition)
+        private void SetCircleProperty(GameObject circle,Vector3 point,out Vector3 worldPosition,string name = "")
         {
             circle.GetComponent<RectTransform>().anchoredPosition = point;
-            circle.GetComponentInChildren<TextMeshProUGUI>().text = "Circle";
+            circle.GetComponentInChildren<TextMeshProUGUI>().text = (name == "") ? "Circle" : name;
+            circle.name = name;
             circle.GetComponent<Image>().color = UnityEngine.Color.blue;
 
             worldPosition = circle.GetComponent<RectTransform>().TransformPoint(circle.GetComponent<RectTransform>().anchoredPosition);
             //ObjectPoints
+        }
+
+        private Vector3 GetPointWorldPosition(Vector3 point)
+        {
+            return EyeTargetController.Instance.GetComponent<RectTransform>().TransformPoint(EyeTargetController.Instance.GetComponent<RectTransform>().anchoredPosition);
         }
 
 
