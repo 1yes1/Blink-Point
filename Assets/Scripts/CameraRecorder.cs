@@ -2,11 +2,16 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using BlinkPoints;
+using UnityEditor;
+using System;
 
 public class CameraRecorder : RecorderBase
 {
     [SerializeField] protected RawImage _renderTexture;
+
     protected WebCamTexture _webCamTexture;
+
+    private Texture2D _snap;
 
     private void OnEnable()
     {
@@ -45,22 +50,28 @@ public class CameraRecorder : RecorderBase
     {
         if (CanTakeSnapshot)
         {
-            CreateTexture2D();
+            //CreateTexture2D();
 
-            if(_startTime + _duration < Time.time)
-            {
-                SaveAsPNG("Camera");
-            }
+            //if (_startTime + _duration < Time.time)
+            //{
+            //    SaveAsPNG("Camera");
+            //}
         }
     }
 
     private void CreateTexture2D()
     {
-        Texture2D snap = new Texture2D(_webCamTexture.width, _webCamTexture.height);
-        snap.SetPixels(_webCamTexture.GetPixels());
-        snap.Apply();
+        _snap = new Texture2D(_webCamTexture.width, _webCamTexture.height);
+        _snap.SetPixels(_webCamTexture.GetPixels());
+        _snap.Apply();
 
-        TakeSnapshot(snap);
+        TakeSnapshot(_snap);
+
+        Resources.UnloadUnusedAssets();
+
+        //GC.Collect();
+        //GC.WaitForPendingFinalizers();
+
     }
 
     private void OnTestStarted()
@@ -71,6 +82,8 @@ public class CameraRecorder : RecorderBase
     private void OnCompleted()
     {
         StopRecorder();
+        SaveAsPNG("Camera");
+
     }
 
 }

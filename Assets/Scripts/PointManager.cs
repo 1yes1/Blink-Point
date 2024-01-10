@@ -66,17 +66,10 @@ namespace BlinkPoints
             //if (inc > 0)
             //    _tempPoints[rnd].IncreaseClickCount();
 
-<<<<<<< Updated upstream
             if (point.ShowCount >= _maxShowCount)
                 _tempPoints.RemoveAt(rnd);
 
             return point;
-=======
-            if (_tempPoints[rnd].ShowCount >= _maxShowCount)
-            {
-                _tempPoints.RemoveAt(rnd);
-            }
->>>>>>> Stashed changes
         }
 
         private IEnumerator BlinkPoints()
@@ -92,12 +85,8 @@ namespace BlinkPoints
                 else
                     yield return new WaitForSeconds(_timeBetweenBlinks);
 
-<<<<<<< Updated upstream
                 GameEventCaller.Instance.OnBeforePointInvisible(point);
 
-=======
-                print(_tempPoints.Count);
->>>>>>> Stashed changes
             }
             print("Time: " + Time.time);
             GameEventCaller.Instance.OnCompleted();

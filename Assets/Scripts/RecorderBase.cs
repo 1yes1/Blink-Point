@@ -30,7 +30,7 @@ public abstract class RecorderBase : MonoBehaviour
     public bool CanTakeSnapshot => _canTakeSnapshot;
 
     protected float _startTime;
-    protected float _duration = 7;
+    protected float _duration = 12;
 
 
 
@@ -62,8 +62,11 @@ public abstract class RecorderBase : MonoBehaviour
 
     protected void TakeSnapshot(Texture2D texture)
     {
+        //return;
         _savedTextures.Add(texture);
         ++_captureCounter;
+
+        Resources.UnloadUnusedAssets();
     }
 
     protected void SaveAsPNG(string preName)
